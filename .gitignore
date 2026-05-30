@@ -1,0 +1,18 @@
+# Rust build artifacts (when building an example, or a product's oracle crate)
+/target
+**/target
+**/*.rs.bk
+Cargo.lock
+
+# Eval outputs are reproducible artifacts, not source. Products that vendor an
+# oracle/ should decide per-repo; left here as guidance (commented):
+#   **/report.json
+#   **/report-baseline.json
+#   **/proposals/_batch-*-raw.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

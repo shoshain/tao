@@ -1,0 +1,35 @@
+# oracle/propose_contract.md — answer-isolation contract for <PRODUCT>
+
+> How proposals are produced + the exact JSON schema the scorer consumes. The
+> proposer (Opus-4.8) and the scorer are SEPARATE: the proposer never sees
+> `expected.json`, the reference, or the allowed-value catalogue; the scorer is
+> LLM-free.
+
+## Answer isolation (hard)
+
+1. **Inputs only.** Each subagent gets ONLY `oracle/cases/<id>/input.json`
+   (<the answer-isolated inputs>). NEVER `expected.json`, the reference, or the
+   scorer source. (The fixed standard vocabulary MAY be given — it is the
+   product's, not the per-case answer.)
+2. **Fresh process, isolated cwd.** New `claude -p` per batch (zero shared
+   context), scratch cwd, `--permission-mode plan`.
+3. **Batched ~8/agent.** One JSON object with a `proposals[]` array per batch.
+4. **Proposer ≠ scorer.** The Rust scorer reuses the product kernel + verifier;
+   no LLM in scoring (C-DET-2).
+
+## Proposal schema
+
+Raw batch object (→ `normalize_oracle_proposals` → `oracle/proposals/<case_id>.json`):
+
+```json
+{ "proposals": [ { "case_id": "<id>", "value": "<the proposal>" } ] }
+```
+
+- `value` is the ONLY scored field (rename/alias to suit the product).
+- The proposer emits <the proposal kind>, never a load-bearing number.
+
+## LLM-OFF baseline
+
+`baseline_proposals` runs the product's own deterministic path over the same
+cases, scored by the same `oracle-score`, so LLM-ON is reported next to a
+like-for-like LLM-OFF number.

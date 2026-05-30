@@ -1,0 +1,38 @@
+[package]
+name = "<product>-oracle"
+description = "<PRODUCT> Phase-2 TAO eval oracle: tolerance-aware LLM-ON precision (cases, reference vocab, scorer). LLM-free; reuses the product's deterministic kernel + verifier as the authority."
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false   # eval infra, not a published crate; also lets path-deps pass cargo-deny
+
+[lib]
+name = "<product>_oracle"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gen_oracle_cases"
+path = "src/bin/gen_oracle_cases.rs"
+
+[[bin]]
+name = "oracle-score"
+path = "src/bin/oracle_score.rs"
+
+[[bin]]
+name = "normalize_oracle_proposals"
+path = "src/bin/normalize_oracle_proposals.rs"
+
+[[bin]]
+name = "baseline_proposals"
+path = "src/bin/baseline_proposals.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+# TODO(product): path-dep the product's OWN deterministic kernel + verifier so the
+# scorer reuses them as the authority (NO LLM dep here):
+# <product_kernel> = { path = "../core/<kernel>" }
+# <product_shell>  = { path = "../shell" }

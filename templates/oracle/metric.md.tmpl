@@ -1,0 +1,36 @@
+# oracle/metric.md — tolerance-aware LLM-ON correctness for <PRODUCT>
+
+> Ground-truth TYPE = **MIXED**. Each layer of the proposal is scored by its own
+> type. This document is the authoritative definition `oracle/src/bin/oracle_score.rs`
+> implements; the scorer is LLM-free and re-scores byte-identically.
+
+## What the AI proposes, and what is scored
+
+<PRODUCT>'s AI proposes <WHAT> from <INPUTS>; a deterministic kernel then
+<computes/retrieves> the load-bearing value(s). The precision question is the
+SPEC's: *<the product's stated precision metric>*.
+
+## The three layers
+
+| Layer | Type | What is scored | Tolerance | Authority |
+|---|---|---|---|---|
+| **Deterministic** | exact | the proposal carries inputs through unchanged + the product kernel's output is **bit-identical** to expected; the product verifier accepts | **exact** (`f64::to_bits`; product verifier tolerances) | `<product_kernel>` + `<product_shell>::verification::verify` |
+| **Standard-derived** | set | every proposed value ∈ `<product>_oracle::reference::ALLOWED` (normalised) | **set-membership** | `reference` (cite <public clause(s)>) |
+| **Judgmental** | banded | `|proposed_soft − reference_soft|` ≤ <BAND> | **diagnostic only, NOT gated** (reference `pending-founder`) | agent-seeded reference |
+
+## Overall per-case PASS
+
+```
+PASS(case) := deterministic_ok(case) AND standard_ok(case)
+precision_pct = 100 * (#PASS) / (#cases)
+```
+
+The judgmental band is recorded (`judgmental_in_band`) but NOT a PASS conjunct.
+
+## What this does / does not claim
+
+- **Does:** the AI never fabricates a load-bearing value + stays internally
+  consistent (deterministic), and stays within the standard vocabulary (standard).
+- **Does NOT:** assert the proposal is *certified accurate* or that the reference
+  data is itself correct. <Tool-qualification / signed-reference items> remain
+  founder items.

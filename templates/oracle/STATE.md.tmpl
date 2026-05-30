@@ -1,0 +1,44 @@
+# oracle/STATE.md — resumable loop state (<PRODUCT>, TAO oracle)
+
+```yaml
+product: <PRODUCT>
+oracle_path: <path>/oracle
+ground_truth_type: MIXED
+task_shape: <distribution-drafting | classification | numeric-fit | extraction | ...>
+n_cases_total: <N>
+n_cases_measured: <N>
+last_result:
+  model: claude-opus-4-8           # Opus 4.8 max; never Haiku/Ollama
+  date: <YYYY-MM-DD>
+  llm_on_precision_pct: <x>
+  llm_off_baseline_pct: <y>
+  deterministic_ok: <a>/<N>
+  standard_ok: <b>/<N>
+  residual_fails: <r>              # classify each: genuine error vs defensible borderline
+gate_status: proposed             # oracle/gate.md, >= <N>% — founder to sign
+round: 1                          # round 2 only if a justified, anti-p-hacked metric fix was needed
+baseline_commit: <hash>           # pre-oracle baseline
+prior_stub: "<the hardcoded precision_bench constant this replaces, if any>"
+pushed: false                     # LOCAL only
+```
+
+## Round log
+- **round 1** (<date>): built the oracle from the TAO template; self-check passes;
+  LLM-OFF baseline <y>%; LLM-ON (Opus 4.8) <x>%. <Round-2 needed? why/why not.>
+  Residual fails: <classify>.
+
+## Resume / re-run
+```
+cargo run -p <product>-oracle --bin gen_oracle_cases
+cargo run -p <product>-oracle --bin oracle-score -- --self-check
+cargo run -p <product>-oracle --bin baseline_proposals
+& .\oracle\run_proposers.ps1 -BatchSize 8 -Model opus
+cargo run -p <product>-oracle --bin normalize_oracle_proposals
+.\target\release\oracle-score.exe --report oracle/report.json --ran-at <DATE>
+```
+
+## Open items for the founder
+1. Sign the gate (`oracle/gate.md`).
+2. Rule on any borderline ground-truth cases.
+3. Swap SYNTHETIC reference data for the real source before a release number.
+4. Commit (local-only; never pushed).

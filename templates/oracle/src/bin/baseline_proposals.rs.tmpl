@@ -1,0 +1,60 @@
+// baseline_proposals (<PRODUCT>) — the LLM-OFF baseline. Runs the product's OWN
+// deterministic / keyword path over each case's inputs and writes proposals in
+// the scorer's schema, so every LLM-ON number is reported next to a like-for-like
+// LLM-OFF number (Phase-2 honesty gate).
+
+use anyhow::Result;
+use clap::Parser;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+// TODO(product): use the product's deterministic path, e.g.
+// use <product_shell>::planner::classify; // or parse / rank / fit ...
+
+#[derive(Parser, Debug)]
+struct Cli {
+    #[arg(long, default_value = "oracle/cases")]
+    cases: PathBuf,
+    #[arg(long, default_value = "oracle/proposals-baseline")]
+    out: PathBuf,
+}
+#[derive(Deserialize)]
+struct Input {
+    // TODO(product): the input fields the baseline path consumes.
+    #[allow(dead_code)]
+    case_id: String,
+}
+#[derive(Serialize)]
+struct Out {
+    value: String,
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    fs::create_dir_all(&cli.out)?;
+    let mut ids: Vec<String> = fs::read_dir(&cli.cases)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir())
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect();
+    ids.sort();
+
+    let mut n = 0usize;
+    for id in &ids {
+        let _input: Input =
+            serde_json::from_str(&fs::read_to_string(cli.cases.join(id).join("input.json"))?)?;
+        // TODO(product): run the product's deterministic path on _input:
+        //   let value = <product_shell>::planner::classify(&_input.description);
+        let value: String = unimplemented!("TODO(product): the LLM-OFF deterministic path output");
+        #[allow(unreachable_code)]
+        {
+            fs::write(
+                cli.out.join(format!("{id}.json")),
+                serde_json::to_string_pretty(&Out { value })? + "\n",
+            )?;
+            n += 1;
+        }
+    }
+    println!("Baseline wrote {n} proposals -> {}", cli.out.display());
+    Ok(())
+}

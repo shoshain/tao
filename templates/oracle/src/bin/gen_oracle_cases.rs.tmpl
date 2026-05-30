@@ -1,0 +1,50 @@
+// gen_oracle_cases (<PRODUCT>) — deterministically emit the held-out set:
+// each case's input.json (ANSWER-ISOLATED inputs) + expected.json (the
+// deterministic target + the standard reference), plus any reference data.
+// Idempotent. LLM-free. Use SYNTHETIC reference data where the real source is
+// licensed/private, and mark it clearly.
+
+use anyhow::Result;
+use clap::Parser;
+use serde_json::json;
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+struct Cli {
+    #[arg(long, default_value = "oracle/cases")]
+    out: PathBuf,
+}
+
+// TODO(product): curate a held-out set spanning easy/medium/hard. Expected
+// answers must be defensible. Tuple shape is illustrative — adapt to the product.
+// (case_id, input, expected, difficulty)
+const CASES: &[(&str, &str, &str, &str)] = &[
+    // ("case-01-...", "<answer-isolated input>", "<expected value/class>", "easy"),
+];
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    fs::create_dir_all(&cli.out)?;
+    let mut n = 0usize;
+    for (id, input_val, expected_val, difficulty) in CASES {
+        let dir = cli.out.join(id);
+        fs::create_dir_all(&dir)?;
+        // input.json — ANSWER-ISOLATED: only what a user would supply.
+        let input = json!({ "case_id": id, /* TODO(product): real input fields */ "input": input_val });
+        // expected.json — ground truth, NEVER shown to the proposer.
+        let expected = json!({
+            "case_id": id,
+            /* TODO(product): deterministic target + standard reference */
+            "expected": expected_val,
+            "difficulty": difficulty,
+            "provenance": "deterministic (gen_oracle_cases)"
+        });
+        fs::write(dir.join("input.json"), serde_json::to_string_pretty(&input)? + "\n")?;
+        fs::write(dir.join("expected.json"), serde_json::to_string_pretty(&expected)? + "\n")?;
+        n += 1;
+    }
+    // TODO(product): also write any reference data file (e.g. a SYNTHETIC databook).
+    println!("Generated {n} cases -> {}", cli.out.display());
+    Ok(())
+}

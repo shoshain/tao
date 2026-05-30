@@ -1,0 +1,62 @@
+// <product>_oracle::reference — the LLM-free STANDARD vocabulary, the anti-gaming
+// EXCLUDED set, and normalisation helpers. Pure data + pure functions: no model,
+// no expected answer. This is the "standard layer" authority.
+//
+// Cite the PUBLIC standard/clause the vocabulary derives from; never redistribute
+// licensed text — paraphrase + cite (clause IDs).
+
+use std::collections::BTreeSet;
+
+/// TODO(product): the standard/allowed vocabulary for the STANDARD layer — the
+/// set of values the product/standard permits (e.g. failure modes, categories,
+/// taxonomy classes). Include legitimate synonyms/word-forms that denote the
+/// SAME thing (set-membership rewards meaning, not one exact string).
+pub const ALLOWED: &[&str] = &[
+    // "value-a", "value-a-synonym", "value-b", ...
+];
+
+/// Anti-gaming guard: values that LOOK valid but are NOT (e.g. an outcome/category
+/// posing as a mechanism). These must NEVER be members of `ALLOWED`. Keeping them
+/// out is what makes set-membership a real test rather than a rubber stamp.
+/// Asserted by `excluded_never_allowed`.
+pub const EXCLUDED: &[&str] = &[
+    // "outcome-not-a-mechanism", ...
+];
+
+/// Normalise for set-membership: trim, lower-case, treat '_' and ' ' as '-'.
+/// Only collapses separators/case — never maps one value onto a different one
+/// (that would be gaming).
+pub fn normalize(s: &str) -> String {
+    s.trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| if c == '_' || c == ' ' { '-' } else { c })
+        .collect()
+}
+
+/// STANDARD layer membership test.
+pub fn is_allowed(s: &str) -> bool {
+    let n = normalize(s);
+    ALLOWED.iter().any(|a| normalize(a) == n)
+}
+
+pub fn allowed_set() -> BTreeSet<String> {
+    ALLOWED.iter().map(|s| normalize(s)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn excluded_never_allowed() {
+        for e in EXCLUDED {
+            assert!(!is_allowed(e), "EXCLUDED value {e:?} must never be in ALLOWED");
+        }
+    }
+
+    #[test]
+    fn normalize_collapses_separators_only() {
+        assert_eq!(normalize("Foo_Bar Baz"), "foo-bar-baz");
+    }
+}

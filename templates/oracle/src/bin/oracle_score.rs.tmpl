@@ -1,0 +1,207 @@
+// oracle-score (<PRODUCT>) — the TAO tolerance-aware LLM-ON scorer.
+//
+// Scores each ground-truth LAYER by its own TYPE, reusing the PRODUCT'S OWN
+// deterministic authority and NEVER calling an LLM (C-DET-2):
+//   DETERMINISTIC (exact)  — the proposal carries inputs through unchanged (no
+//                            fabrication) and recompute/retrieve == expected
+//                            bit-identically AND the product verifier accepts it.
+//   STANDARD (set)         — every proposed value normalises into the product's
+//                            allowed vocabulary (`<product>_oracle::reference`).
+//   JUDGMENTAL (banded)    — soft distance to a reference; DIAGNOSTIC ONLY.
+// Per-case PASS = DETERMINISTIC ∧ STANDARD. precision_pct = 100*passed/scored.
+//
+// This is a TEMPLATE: every `TODO(product)` hook must be filled with the
+// product's real types + kernel + verifier before it compiles. Keep it LLM-free.
+
+use anyhow::{Context, Result};
+use clap::Parser;
+use <product>_oracle::reference::{is_allowed, normalize};
+use serde::Deserialize;
+use serde_json::json;
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+// TODO(product): import the product's deterministic authority (NO LLM):
+// use <product_kernel>::{recompute_or_retrieve, ProductTypes...};
+// use <product_shell>::verification::verify;
+
+#[derive(Parser, Debug)]
+#[command(name = "oracle-score", about = "<PRODUCT> tolerance-aware LLM-ON scorer")]
+struct Cli {
+    #[arg(long, default_value = "oracle/cases")]
+    cases: PathBuf,
+    #[arg(long, default_value = "oracle/proposals")]
+    proposals: PathBuf,
+    #[arg(long, default_value = "oracle/report.json")]
+    report: PathBuf,
+    #[arg(long, default_value = "claude-opus-4-8")]
+    model: String,
+    #[arg(long, default_value = "unset")]
+    ran_at: String,
+    #[arg(long, default_value_t = false)]
+    self_check: bool,
+    #[arg(long)]
+    only: Option<String>,
+}
+
+// ---- schemas (TODO(product): fill fields) ----------------------------------
+#[derive(Debug, Clone, Deserialize)]
+struct Input {
+    // The answer-isolated inputs the proposer was given (NOT scored directly).
+    // TODO(product): e.g. description / bom / lambda inputs.
+    #[allow(dead_code)]
+    case_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Expected {
+    // The deterministic target + the standard reference for this case.
+    // TODO(product): e.g. expected_value: f64, expected_row_id: String, class: String.
+    #[serde(default)]
+    difficulty: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Proposal {
+    // What the AI proposed. TODO(product): the scored field(s).
+    // The single standard-layer token (a class, a mode, ...). Use aliases as needed.
+    #[serde(default)]
+    value: String,
+}
+
+struct LayerResult {
+    deterministic_ok: bool,
+    standard_ok: bool,
+    judgmental_in_band: bool,
+    pass: bool,
+    reason: String,
+}
+
+/// Score one (input, expected, proposal) triple by the three layers.
+fn score(_input: &Input, expected: &Expected, proposal: &Proposal) -> LayerResult {
+    // ===== STANDARD layer (set-membership) ==================================
+    let proposed = normalize(&proposal.value);
+    let standard_ok = is_allowed(&proposed);
+
+    // ===== DETERMINISTIC layer (exact + verifier) ===========================
+    // TODO(product): feed the proposal into the product's OWN kernel and compare
+    // bit-identically to the expected target, then run the product verifier.
+    // Example shape:
+    //   let produced = recompute_or_retrieve(proposal -> product input, ...);
+    //   let det_value_ok = produced.value.to_bits() == expected.expected_value.to_bits();
+    //   let verifier_ok  = verify(&produced, ...).is_ok();
+    //   let deterministic_ok = det_value_ok && verifier_ok;
+    let deterministic_ok: bool = {
+        let _ = expected; // remove once wired
+        unimplemented!("TODO(product): wire the deterministic kernel + verifier")
+    };
+
+    // ===== JUDGMENTAL layer (banded, diagnostic-only) =======================
+    // TODO(product, optional): |proposed_soft - reference_soft| <= BAND.
+    let judgmental_in_band = false;
+
+    let pass = deterministic_ok && standard_ok;
+    let reason = if pass {
+        "pass".into()
+    } else if !standard_ok {
+        format!("standard layer failed: '{proposed}' not in allowed vocabulary")
+    } else {
+        "deterministic layer failed".into()
+    };
+
+    LayerResult { deterministic_ok, standard_ok, judgmental_in_band, pass, reason }
+}
+
+fn load<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
+    let s = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+    serde_json::from_str(&s).with_context(|| format!("parsing {}", path.display()))
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    if cli.self_check {
+        return run_self_checks();
+    }
+
+    let only: Option<BTreeSet<String>> = cli.only.as_ref().map(|s| {
+        s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect()
+    });
+
+    let mut case_ids: Vec<String> = fs::read_dir(&cli.cases)
+        .with_context(|| format!("reading {}", cli.cases.display()))?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir())
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|id| only.as_ref().map(|s| s.contains(id)).unwrap_or(true))
+        .collect();
+    case_ids.sort();
+    anyhow::ensure!(!case_ids.is_empty(), "no cases under {}", cli.cases.display());
+
+    let mut per_case = Vec::new();
+    let (mut scored, mut passed, mut det_ok, mut std_ok, mut judg) = (0usize, 0, 0, 0, 0);
+
+    for id in &case_ids {
+        let dir = cli.cases.join(id);
+        let input: Input = load(&dir.join("input.json"))?;
+        let expected: Expected = load(&dir.join("expected.json"))?;
+        let proposal: Proposal = match load(&cli.proposals.join(format!("{id}.json"))) {
+            Ok(p) => p,
+            Err(e) => {
+                per_case.push(json!({"case_id": id, "pass": false, "reason": format!("missing/invalid proposal: {e}")}));
+                scored += 1;
+                continue;
+            }
+        };
+        let r = score(&input, &expected, &proposal);
+        scored += 1;
+        if r.pass { passed += 1; }
+        if r.deterministic_ok { det_ok += 1; }
+        if r.standard_ok { std_ok += 1; }
+        if r.judgmental_in_band { judg += 1; }
+        per_case.push(json!({
+            "case_id": id, "difficulty": expected.difficulty, "pass": r.pass,
+            "deterministic_ok": r.deterministic_ok, "standard_ok": r.standard_ok,
+            "judgmental_in_band": r.judgmental_in_band, "reason": r.reason,
+        }));
+    }
+
+    let precision_pct = 100.0 * (passed as f64) / (scored as f64);
+    let report = json!({
+        "schema_version": 1,
+        "measurement": "LLM-ON (tolerance-aware oracle)",
+        "model": cli.model, "ran_at": cli.ran_at,
+        "scored_count": scored, "passed_count": passed, "precision_pct": precision_pct,
+        "layer_counts": { "deterministic_ok": det_ok, "standard_ok": std_ok, "judgmental_in_band": judg },
+        "scorer": "oracle/src/bin/oracle_score.rs (product kernel + verifier authoritative; NO LLM, C-DET-2)",
+        // TODO(product): set the gate from the product SPEC's precision threshold.
+        "thresholds": { "precision_pct_min": 90.0 },
+        "gate_status": if precision_pct >= 90.0 { "PASS" } else { "BELOW_GATE" },
+        "per_case": per_case,
+    });
+    if let Some(p) = cli.report.parent() { fs::create_dir_all(p)?; }
+    fs::write(&cli.report, serde_json::to_string_pretty(&report)? + "\n")?;
+    println!("<PRODUCT> oracle LLM-ON precision = {:.1}% ({}/{} PASS; det {}, std {}). Report: {}",
+        precision_pct, passed, scored, det_ok, std_ok, cli.report.display());
+    Ok(())
+}
+
+// ---- self-checks (MANDATORY: prove the scorer discriminates) ---------------
+// TODO(product): build a canonical-correct case (-> PASS), a fabricated-number
+// case (-> FAIL deterministic), and an off-catalogue/invented value (-> FAIL
+// standard). Assert each. A scorer that cannot fail a wrong answer is worthless.
+fn run_self_checks() -> Result<()> {
+    unimplemented!(
+        "TODO(product): assert correct->PASS, fabricated-number->FAIL(det), \
+         invented-value->FAIL(std). See the FMEDA/DataBook reference impls."
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "enable once run_self_checks is implemented for the product"]
+    fn self_checks_pass() {
+        super::run_self_checks().expect("self-checks must pass");
+    }
+}

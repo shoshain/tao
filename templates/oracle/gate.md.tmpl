@@ -1,0 +1,34 @@
+# oracle/gate.md — LLM-ON precision gate for <PRODUCT> (PROPOSED)
+
+```yaml
+status: proposed            # founder signs to make authoritative
+signoff: pending-founder
+metric: oracle/metric.md
+scorer: oracle/src/bin/oracle_score.rs (oracle-score)
+ground_truth_type: MIXED
+```
+
+## Proposed threshold
+
+> **LLM-ON precision ≥ <N>%** over the held-out set, where a case PASSes iff its
+> **deterministic** layer and its **standard** layer both hold (metric.md).
+
+<N>% is the product's own `precision_threshold_pct` (SPEC §<x>), now applied to a
+**real, executed** measurement rather than a hardcoded stub constant.
+
+## Companion thresholds (diagnostics, not the gate)
+
+| Metric | Proposed value | Role |
+|---|---|---|
+| no-fabrication | structural / =100% | the AI cannot emit the load-bearing value; verifier proves it |
+| `verifier_accept` | = 100% | every shipped proposal passes the product verifier chain |
+| judgmental in-band | **NOT GATED** | reference is `pending-founder` |
+
+## Honesty notes for the founder
+
+1. The reference data here is <SYNTHETIC/real?>; the metric measures <what>, not
+   the correctness of <licensed/external source>.
+2. <N>% is inherited from the SPEC, not independently re-derived; widen the set
+   before treating the exact value as a release gate.
+3. This gate certifies <hygiene + non-fabrication>, **not** certification / tool
+   qualification (those remain founder items).
