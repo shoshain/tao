@@ -27,14 +27,19 @@ Oracle/
   docs/
     checklist.md            # per-product adoption checklist (the recipe, actionable)
     glossary.md             # terms + the naming rationale
+    wiring-opus-backend.md  # recipe for de-stubbing a product's own LLM proposer path
   templates/oracle/         # a clone-ready oracle/ bundle (copy into <product>/oracle/)
     Cargo.toml.tmpl  src/...  *.md.tmpl  proposer_system.txt.tmpl  run_proposers.ps1
   examples/
     fmeda-copilot.md         # worked example — open-ended distribution drafting
     databook-bridge.md       # worked example — closed-vocabulary classification
   scripts/
-    new-oracle.ps1           # scaffold an oracle/ into a target product from the templates
+    new-oracle.ps1                    # scaffold an oracle/ into a target product from the templates
+    detect-phantom-precision.ps1      # heuristic scanner for stubbed/hardcoded precision anti-patterns
 ```
+
+**Platform scope:** `scripts/new-oracle.ps1` and `scripts/detect-phantom-precision.ps1` are
+Windows/PowerShell (`pwsh`) only, by design for this pass — no cross-platform port is planned here.
 
 ## Quickstart — adopt TAO in a new product
 
@@ -57,7 +62,8 @@ The full rationale for every step is in [`METHODOLOGY.md`](METHODOLOGY.md); the 
 
 ## Status
 
-**v0.1.0** — validated on two pilots (two task shapes); see [`CHANGELOG.md`](CHANGELOG.md). MIT-licensed.
+**v0.2.0** — validated on two pilots (two task shapes); adds the Opus-backend wiring recipe and
+the phantom-precision stub detector; see [`CHANGELOG.md`](CHANGELOG.md). MIT-licensed.
 
 ## Reference implementations
 

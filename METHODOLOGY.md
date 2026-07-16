@@ -1,4 +1,4 @@
-# The Tolerance-Aware Oracle (TAO) — v0.1.0
+# The Tolerance-Aware Oracle (TAO) — v0.2.0
 
 > **A method for measuring the precision of "AI-proposes / deterministic-core-verifies" tools —
 > by scoring the AI against the product's _own_ deterministic truth, one ground-truth layer at a time.**
@@ -6,7 +6,10 @@
 - **Canonical home:** this repository (`C:\Oracle`, `METHODOLOGY.md`). Versioned in `CHANGELOG.md`;
   improve it via `CONTRIBUTING.md`. Mirrored for portfolio convenience at
   `C:\AIP\TOLERANCE_AWARE_ORACLE_METHODOLOGY.md`.
-- **Status:** validated on 2 pilots (FMEDA-Copilot, DataBook-Bridge), 2026-05-30.
+- **Status:** v0.2.0 — validated on 2 pilots (FMEDA-Copilot, DataBook-Bridge), 2026-05-30; adds the
+  Opus-backend wiring recipe ([`docs/wiring-opus-backend.md`](docs/wiring-opus-backend.md)) and the
+  phantom-precision stub detector ([`scripts/detect-phantom-precision.ps1`](scripts/detect-phantom-precision.ps1)),
+  2026-05-31.
 - **Engine (founder decision, 2026-05-30):** the proposing AI is **Claude Opus 4.8 at max**, never
   Haiku/Ollama. The scorer contains **no model at all**.
 

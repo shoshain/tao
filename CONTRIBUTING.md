@@ -50,3 +50,5 @@ template abstraction.
 - `git` history should read as method evolution: one logical change per commit, CHANGELOG updated.
 - The `*.tmpl` files are intentionally not compiled here — they compile once copied into a product and the
   `TODO(product)` hooks are filled.
+- The local-only `backup/pre-shoshain-rewrite` branch intentionally preserves the pre-rewrite authorship
+  history (an authorship rewrite, not a content change); it is not pushed and should not be modified.

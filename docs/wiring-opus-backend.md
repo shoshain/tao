@@ -4,6 +4,11 @@
 > and waiver-link (waiver→clause *classification*). This is the canonical recipe for
 > de-stubbing a product's LLM path so the **shipped product** is genuinely AI-augmented,
 > while keeping the scoring authority LLM-free (C-DET-2).
+>
+> **Caveat:** MiniSat-Interlock, waiver-link, and the file paths cited below (e.g.
+> `check_no_llm_in_verifier.py`) live in a private external portfolio, not in this
+> repository. They are not included here and are not verifiable standalone from Oracle —
+> treat the citations as provenance for the recipe, not as inspectable code.
 
 ## The shape of the problem
 Most AIP products shipped an "AI" path that was a **stub**: `Ok(vec![])`,
